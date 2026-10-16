@@ -1,26 +1,107 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --primary-pink: #F45B8A;
+    --primary-pink-hover: #E04877;
+    --celebration-red: #D9365E;
+    --celebration-red-dark: #B52246;
+    --blush-bg: #FFF3F6;
+    --blush-subtle: #FFEAEF;
+    --charcoal: #30252B;
+    --muted-charcoal: #6B5E66;
+    --card-border: #F8D7E0;
+    --globalcare-blue: #1A437E;
+    --gold-accent: #E5A84B;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--blush-bg);
+    color: var(--charcoal);
+    font-family: var(--font-sans), system-ui, sans-serif;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, .font-serif {
+    font-family: var(--font-serif), Georgia, serif;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Floating petals animation */
+@keyframes floatSlow {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(0.9);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translateY(-20px) rotate(18deg) scale(1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(0) rotate(0deg) scale(0.9);
+    opacity: 0.7;
+  }
+}
+
+@keyframes floatGentle {
+  0% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(-10deg);
+  }
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+}
+
+@keyframes pulseSubtle {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+.animate-float-slow {
+  animation: floatSlow 8s ease-in-out infinite;
+}
+
+.animate-float-gentle {
+  animation: floatGentle 6s ease-in-out infinite;
+}
+
+.animate-pulse-subtle {
+  animation: pulseSubtle 3s ease-in-out infinite;
+}
+
+/* Card Themes styles */
+.theme-bloom {
+  background: linear-gradient(135deg, #FFF9FA 0%, #FFF0F4 50%, #FFE6ED 100%);
+  border: 1.5px solid #F8C3D2;
+  box-shadow: 0 10px 30px -5px rgba(244, 91, 138, 0.15);
+}
+
+.theme-joy {
+  background: linear-gradient(135deg, #FFF6F0 0%, #FFEFEA 50%, #FFDFD6 100%);
+  border: 1.5px solid #FDC0B0;
+  box-shadow: 0 10px 30px -5px rgba(249, 115, 22, 0.15);
+}
+
+.theme-minimal {
+  background: linear-gradient(135deg, #FFFFFF 0%, #FAF8F9 100%);
+  border: 1.5px solid #E8DFE3;
+  box-shadow: 0 10px 25px -5px rgba(48, 37, 43, 0.08);
+}
+
+.theme-celebration {
+  background: linear-gradient(135deg, #7A142D 0%, #B9234A 50%, #D9365E 100%);
+  border: 1.5px solid #EAB308;
+  color: #FFFFFF !important;
+  box-shadow: 0 15px 35px -5px rgba(217, 54, 94, 0.35);
 }

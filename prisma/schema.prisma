@@ -1,0 +1,39 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model GreetingCard {
+  id               String           @id @default(uuid())
+  publicId         String           @unique @map("public_id")
+  message          String           @db.VarChar(500)
+  senderName       String?          @map("sender_name")
+  senderDepartment String?          @map("sender_department")
+  cardTheme        String           @default("bloom") @map("card_theme")
+  imageUrl         String?          @map("image_url")
+  status           String           @default("published") // published, pending_review, rejected, removed
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+  reports          GreetingReport[]
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([publicId])
+  @@map("greeting_cards")
+}
+
+model GreetingReport {
+  id             String       @id @default(uuid())
+  greetingCardId String       @map("greeting_card_id")
+  greetingCard   GreetingCard @relation(fields: [greetingCardId], references: [id], onDelete: Cascade)
+  reason         String
+  details        String?
+  status         String       @default("pending") // pending, reviewed, dismissed
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  @@index([greetingCardId])
+  @@map("greeting_reports")
+}
