@@ -16,15 +16,20 @@ import {
   ChevronRight,
   Heart,
   Quote,
+  Camera,
+  Flower2,
+  Maximize2,
+  X,
 } from "lucide-react";
 
 export interface WishCardData {
   id?: string;
   publicId: string;
   message: string;
-  senderName: string;
+  senderName?: string | null;
   senderDepartment?: string | null;
   cardTheme: string;
+  imageUrl?: string | null;
   createdAt?: string;
 }
 
@@ -87,7 +92,7 @@ function PushPin({ index = 0 }: { index?: number }) {
 
   return (
     <div
-      className="absolute -top-[33px] left-1/2 z-20 pointer-events-none group-hover:scale-110 transition-transform duration-300"
+      className="absolute -top-[33px] left-1/2 z-30 pointer-events-none group-hover:scale-110 transition-transform duration-300"
       style={{
         transform: `translateX(-50%) rotate(${tilt}deg)`,
         transformOrigin: "18px 41px", // Pivots at the exact needle tip pointing into the white tape!
@@ -189,6 +194,33 @@ const NOTE_THEME_STYLES: Record<
   },
 };
 
+// Default high-resolution theme floral photography (fallback when user did not upload a photo)
+const DEFAULT_THEME_IMAGES: Record<
+  string,
+  { src: string; alt: string; label: string }
+> = {
+  bloom: {
+    src: "/images/floral_bloom.jpg",
+    alt: "Đóa hoa hồng & mẫu đơn rực rỡ sắc thắm",
+    label: "Sắc hoa Bloom",
+  },
+  joy: {
+    src: "/images/floral_joy.jpg",
+    alt: "Hoa mao lương & phong lữ tràn đầy niềm vui",
+    label: "Sắc hoa Joy",
+  },
+  minimal: {
+    src: "/images/floral_minimal.jpg",
+    alt: "Đóa phong lan trắng thanh tao, trang nhã",
+    label: "Sắc hoa Minimal",
+  },
+  celebration: {
+    src: "/images/floral_celebration.jpg",
+    alt: "Vườn hoa dạ yến cẩm tú cầu tôn vinh phái đẹp",
+    label: "Sắc hoa Celebration",
+  },
+};
+
 // Subtle Rotations for Organic Note Look
 const ROTATIONS = [
   "-rotate-1",
@@ -214,6 +246,9 @@ export default function WishWall({ refreshTrigger = 0 }: WishWallProps) {
 
   // Active Copied State
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Active Image & Card Lightbox Preview Modal
+  const [previewCard, setPreviewCard] = useState<WishCardData | null>(null);
 
   const fetchCards = useCallback(async (targetPage = 1) => {
     setIsLoading(true);
@@ -242,6 +277,23 @@ export default function WishWall({ refreshTrigger = 0 }: WishWallProps) {
   useEffect(() => {
     fetchCards(page);
   }, [fetchCards, page, refreshTrigger]);
+
+  // Close preview modal on Escape key and prevent background scroll
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setPreviewCard(null);
+      }
+    };
+    if (previewCard) {
+      window.addEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "hidden";
+    }
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "unset";
+    };
+  }, [previewCard]);
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= totalPages && newPage !== page) {
@@ -419,7 +471,7 @@ export default function WishWall({ refreshTrigger = 0 }: WishWallProps) {
               /* ============================================================ */
               /* ENLARGED STICKY NOTES WITH PIN POINTING INTO THE WHITE TAPE */
               /* ============================================================ */
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7 sm:gap-8 py-3 items-stretch">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7 sm:gap-8 pt-9 pb-4 sm:pt-10 sm:pb-6 items-stretch">
                 {cards.map((card, idx) => {
                   const style =
                     NOTE_THEME_STYLES[card.cardTheme] || NOTE_THEME_STYLES.bloom;
@@ -432,97 +484,139 @@ export default function WishWall({ refreshTrigger = 0 }: WishWallProps) {
                       })
                     : "20/10";
 
+                  const cleanSenderName = card.senderName?.trim() || "";
+                  const cleanDepartment = card.senderDepartment?.trim() || "";
+                  const isGenericName =
+                    !cleanSenderName ||
+                    cleanSenderName.toLowerCase() === "đồng nghiệp";
+                  const hasCustomSender =
+                    !isGenericName || Boolean(cleanDepartment);
+
+                  const primarySignature = !isGenericName
+                    ? cleanSenderName
+                    : cleanSenderName || cleanDepartment;
+
+                  const secondarySignature =
+                    primarySignature !== cleanDepartment && cleanDepartment
+                      ? cleanDepartment
+                      : null;
+
+                  const hasCustomPhoto = Boolean(
+                    card.imageUrl && card.imageUrl.trim() !== ""
+                  );
+                  const themeFloral =
+                    DEFAULT_THEME_IMAGES[card.cardTheme] ||
+                    DEFAULT_THEME_IMAGES.bloom;
+
+                  const displayImage = hasCustomPhoto
+                    ? card.imageUrl!.trim()
+                    : themeFloral.src;
+                  const imageAlt = hasCustomPhoto
+                    ? "Ảnh kỷ niệm đính kèm lời chúc"
+                    : themeFloral.alt;
+                  const imageBadgeLabel = hasCustomPhoto
+                    ? "Ảnh kỷ niệm"
+                    : themeFloral.label;
+
                   return (
                     <div
                       key={card.id || card.publicId}
-                      className={`relative group transform ${rotation} hover:rotate-0 hover:scale-[1.03] hover:z-30 transition-all duration-300 flex flex-col`}
+                      onClick={() => setPreviewCard(card)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setPreviewCard(card);
+                        }
+                      }}
+                      className={`relative group transform ${rotation} hover:rotate-0 hover:scale-[1.03] hover:z-30 transition-all duration-300 flex flex-col cursor-pointer select-none`}
+                      title="Nhấn để mở xem chi tiết và tương tác"
                     >
-                      {/* Realistic 3D Angled Pushpin with Needle tip pointing into the white tape */}
-                      <PushPin index={idx} />
-
                       {/* Sticky Note Paper */}
                       <div
-                        className={`relative rounded-2xl p-5 sm:p-6 md:p-7 ${style.bg} border ${style.border} shadow-[0_4px_14px_rgba(0,0,0,0.06)] group-hover:shadow-[0_12px_28px_rgba(217,54,94,0.18)] transition-all duration-300 flex flex-col justify-between flex-1 min-h-[220px] sm:min-h-[245px]`}
+                        className={`relative rounded-2xl p-4 sm:p-5 md:p-5.5 ${style.bg} border ${style.border} shadow-[0_4px_16px_rgba(0,0,0,0.06)] group-hover:shadow-[0_16px_36px_rgba(217,54,94,0.18)] transition-all duration-300 flex flex-col justify-between flex-1 min-h-[400px] sm:min-h-[440px]`}
                       >
-                        {/* Washi Tape Strip at top - Đoạn màu trắng của note nơi kim đinh ghim cắm vào */}
+                        {/* Washi Tape Strip at top - Đè lên mép trên ảnh như dán ảnh thật vào note */}
                         <div
-                          className={`absolute -top-2 left-1/2 -translate-x-1/2 w-16 h-5 bg-white/90 backdrop-blur-xs border-y border-dashed ${style.tapeBorder} shadow-xs pointer-events-none rotate-[-1deg] rounded-xs flex items-center justify-center`}
+                          className={`absolute -top-2.5 left-1/2 -translate-x-1/2 w-16 h-5.5 bg-white/90 backdrop-blur-xs border-y border-dashed ${style.tapeBorder} shadow-xs pointer-events-none rotate-[-1deg] rounded-xs flex items-center justify-center z-10`}
                         >
                           {/* Puncture hole where pin needle penetrates */}
                           <div className="w-1.5 h-1.5 rounded-full bg-[#3D2E37]/35 shadow-inner mt-1" />
                         </div>
 
+                        {/* Prominent Photo / Theme Flower Header */}
+                        <div className="relative mt-1 mb-3.5 group/photo">
+                          {/* White Polaroid/Matting Frame */}
+                          <div className="p-1.5 sm:p-2 bg-white/95 rounded-xl sm:rounded-2xl shadow-[0_4px_14px_rgba(0,0,0,0.07)] border border-[#30252B]/8 ring-1 ring-white/80">
+                            <div className="relative block w-full h-48 sm:h-52 md:h-56 rounded-lg sm:rounded-xl overflow-hidden bg-stone-100 text-left">
+                              <Image
+                                src={displayImage}
+                                alt={imageAlt}
+                                fill
+                                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                                className="object-cover group-hover/photo:scale-108 group-hover:scale-105 transition-transform duration-700 ease-out"
+                              />
+
+                              {/* Subtle artistic vignette gradient */}
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent pointer-events-none" />
+
+                              {/* Badge on Photo (Ảnh kỷ niệm hoặc Đóa hoa theo Theme) */}
+                              <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md text-[#2E2429] text-[10px] sm:text-[11px] font-semibold shadow-xs">
+                                {hasCustomPhoto ? (
+                                  <>
+                                    <Camera className="w-3.5 h-3.5 text-[#D9365E]" />
+                                    <span>Ảnh kỷ niệm</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Flower2 className="w-3.5 h-3.5 text-[#D9365E]" />
+                                    <span>{imageBadgeLabel}</span>
+                                  </>
+                                )}
+                              </div>
+
+                              {/* Click expand hint indicator */}
+                              <div className="absolute top-2.5 right-2.5 p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                <Maximize2 className="w-3.5 h-3.5" />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
                         {/* Note Body (Lời chúc chân thành - To, rõ nét, dễ đọc) */}
-                        <div className="pt-2 pb-4 flex-1 flex flex-col justify-center">
+                        <div className="pt-1 pb-3 flex-1 flex flex-col justify-center">
                           <div className="relative">
                             <Quote
-                              className="w-6 h-6 absolute -top-3 -left-1 opacity-20 pointer-events-none"
+                              className="w-5 h-5 absolute -top-2.5 -left-1 opacity-20 pointer-events-none"
                               style={{ color: style.accent }}
                             />
-                            <p className="text-sm sm:text-[15px] md:text-base text-[#2E2429] leading-[1.75] italic font-serif [text-wrap:pretty] pl-3">
+                            <p className="text-sm sm:text-[15px] md:text-base text-[#2E2429] leading-[1.7] italic font-serif [text-wrap:pretty] pl-3 line-clamp-5">
                               &ldquo;{card.message}&rdquo;
                             </p>
                           </div>
                         </div>
 
-                        {/* Bottom: Date & Minimal Tool Buttons (Bỏ phần bên trái, nút nhỏ gọn) */}
-                        <div className="pt-2 border-t border-[#30252B]/8 flex items-center justify-end gap-1 text-[#8C7A83]">
-                          {/* Card Date */}
-                          <span className="font-mono text-[11px] text-[#A898A1] mr-1 select-none">
-                            {formattedDate}
-                          </span>
-
-                          {/* Copy Link */}
-                          <button
-                            type="button"
-                            onClick={() => handleCopyCardLink(card.publicId)}
-                            title="Sao chép liên kết thư"
-                            className="p-1 rounded-md hover:bg-white/80 hover:text-[#D9365E] transition-colors"
-                          >
-                            {copiedId === card.publicId ? (
-                              <Check className="w-3.5 h-3.5 text-emerald-600" />
-                            ) : (
-                              <Copy className="w-3.5 h-3.5" />
+                        {/* Bottom: Phần bên dưới của note chỉ để tên người gửi thôi */}
+                        {hasCustomSender && (
+                          <div className="pt-2.5 border-t border-[#30252B]/8 leading-tight">
+                            <span className="text-xs sm:text-[13px] font-bold text-[#2E2429] block truncate">
+                              — {primarySignature}
+                            </span>
+                            {secondarySignature && (
+                              <span className="text-[10px] sm:text-[11px] text-[#7A6672] block truncate font-medium mt-0.5">
+                                {secondarySignature}
+                              </span>
                             )}
-                          </button>
-
-                          {/* Native Share */}
-                          <button
-                            type="button"
-                            onClick={() => handleNativeShare(card.publicId)}
-                            title="Chia sẻ bức thư"
-                            className="p-1 rounded-md hover:bg-white/80 hover:text-[#D9365E] transition-colors"
-                          >
-                            <Share2 className="w-3.5 h-3.5" />
-                          </button>
-
-                          {/* View Full Card Page */}
-                          <a
-                            href={`/card/${card.publicId}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="Xem trang thiệp riêng"
-                            className="p-1 rounded-md hover:bg-white/80 hover:text-[#1A437E] transition-colors"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
-
-                          {/* Report Button */}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setReportingPublicId(card.publicId || null)
-                            }
-                            title="Báo cáo nội dung không phù hợp"
-                            className="p-1 rounded-md hover:bg-red-50 hover:text-red-500 transition-colors"
-                          >
-                            <Flag className="w-3 h-3" />
-                          </button>
-                        </div>
+                          </div>
+                        )}
                       </div>
+
+                      {/* Realistic 3D Angled Pushpin with Needle tip pointing into the white tape - Rendered ON TOP */}
+                      <PushPin index={idx} />
                     </div>
                   );
-                })}
+              })}
               </div>
             )}
           </div>
@@ -597,6 +691,169 @@ export default function WishWall({ refreshTrigger = 0 }: WishWallProps) {
             fetchCards(page);
           }}
         />
+      )}
+
+      {/* Lightbox Preview Modal for Enlarged Photo & Note with Animation & All Actions */}
+      {previewCard && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 md:p-6 bg-black/65 backdrop-blur-md animate-modal-backdrop"
+          onClick={() => setPreviewCard(null)}
+        >
+          <div
+            className="relative bg-white rounded-3xl max-w-xl w-full p-5 sm:p-6 md:p-7 shadow-[0_25px_60px_-15px_rgba(217,54,94,0.35)] border border-white/50 flex flex-col gap-4 max-h-[92vh] overflow-y-auto animate-modal-pop"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {(() => {
+              const isCustom = Boolean(
+                previewCard.imageUrl && previewCard.imageUrl.trim() !== ""
+              );
+              const fallback =
+                DEFAULT_THEME_IMAGES[previewCard.cardTheme] ||
+                DEFAULT_THEME_IMAGES.bloom;
+              const imgSrc = isCustom ? previewCard.imageUrl!.trim() : fallback.src;
+              const imgAlt = isCustom ? "Ảnh kỷ niệm đính kèm" : fallback.alt;
+              const imgLabel = isCustom ? "Ảnh kỷ niệm" : fallback.label;
+
+              const modalFormattedDate = previewCard.createdAt
+                ? new Date(previewCard.createdAt).toLocaleDateString("vi-VN", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                  })
+                : "20/10/2026";
+
+              return (
+                <>
+                  {/* Modal Header: Badge, Date & Close Button */}
+                  <div className="flex items-center justify-between gap-3 pb-1 border-b border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF0F4] text-[#D9365E] text-xs font-semibold border border-[#F8D7E0]">
+                        {isCustom ? (
+                          <Camera className="w-3.5 h-3.5 text-[#D9365E]" />
+                        ) : (
+                          <Flower2 className="w-3.5 h-3.5 text-[#D9365E]" />
+                        )}
+                        <span>{imgLabel}</span>
+                      </span>
+                      <span className="text-xs text-[#8A7781] font-mono select-none">
+                        {modalFormattedDate}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setPreviewCard(null)}
+                      className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-[#4D3A44] flex items-center justify-center transition-colors"
+                      title="Đóng xem chi tiết (Esc)"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Photo Container */}
+                  <div className="relative w-full h-[260px] sm:h-[340px] md:h-[380px] rounded-2xl overflow-hidden bg-stone-100 shadow-inner border border-black/5">
+                    <Image
+                      src={imgSrc}
+                      alt={imgAlt}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 700px"
+                      className="object-cover"
+                      priority
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+                  </div>
+
+                  {/* Note Wish Content */}
+                  <div className="space-y-3 pt-1">
+                    <div className="relative pl-4 border-l-2 border-[#D9365E]">
+                      <p className="text-base sm:text-lg text-[#2E2429] leading-relaxed italic font-serif [text-wrap:pretty]">
+                        &ldquo;{previewCard.message}&rdquo;
+                      </p>
+                    </div>
+
+                    {/* Sender & Department if present */}
+                    {(previewCard.senderName || previewCard.senderDepartment) && (
+                      <div className="pt-1 text-xs text-[#7A6672]">
+                        {previewCard.senderName && (
+                          <span className="font-bold text-sm text-[#2E2429] block">
+                            — {previewCard.senderName}
+                          </span>
+                        )}
+                        {previewCard.senderDepartment && (
+                          <span className="text-xs text-[#7A6672] font-medium block mt-0.5">
+                            {previewCard.senderDepartment}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Action Toolbar (Tất cả các thao tác đưa lên modal) */}
+                    <div className="pt-3.5 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {/* Copy Link Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleCopyCardLink(previewCard.publicId)}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-stone-100 hover:bg-[#FFF0F4] hover:text-[#D9365E] text-xs font-semibold text-[#30252B] transition-all hover:scale-[1.02] active:scale-95"
+                          title="Sao chép liên kết thư"
+                        >
+                          {copiedId === previewCard.publicId ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                              <span className="text-emerald-700">Đã chép link!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3.5 h-3.5 text-[#7A6672]" />
+                              <span>Sao chép link</span>
+                            </>
+                          )}
+                        </button>
+
+                        {/* Native Share Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleNativeShare(previewCard.publicId)}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-stone-100 hover:bg-[#FFF0F4] hover:text-[#D9365E] text-xs font-semibold text-[#30252B] transition-all hover:scale-[1.02] active:scale-95"
+                          title="Chia sẻ bức thư"
+                        >
+                          <Share2 className="w-3.5 h-3.5 text-[#7A6672]" />
+                          <span>Chia sẻ</span>
+                        </button>
+
+                        {/* Report Button */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const pid = previewCard.publicId;
+                            setPreviewCard(null);
+                            setReportingPublicId(pid);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl hover:bg-red-50 text-xs font-medium text-red-500 transition-all hover:scale-[1.02] active:scale-95"
+                          title="Báo cáo nội dung không phù hợp"
+                        >
+                          <Flag className="w-3 h-3" />
+                          <span>Báo cáo</span>
+                        </button>
+                      </div>
+
+                      {/* View Full Card Page (Primary CTA) */}
+                      <a
+                        href={`/card/${previewCard.publicId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#D9365E] to-[#F45B8A] hover:brightness-105 text-white font-semibold text-xs shadow-md shadow-[#D9365E]/20 transition-all hover:scale-[1.02] active:scale-95 ml-auto"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>Mở trang thiệp</span>
+                      </a>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
       )}
     </section>
   );

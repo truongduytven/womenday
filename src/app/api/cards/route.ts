@@ -87,9 +87,9 @@ export async function POST(req: NextRequest) {
     // Validate theme
     const theme = ALLOWED_THEMES.includes(cardTheme) ? cardTheme : "bloom";
 
-    // Sanitize optional fields (mặc định 'Đồng nghiệp' nếu không nhập)
-    const sanitizedSender = senderName && senderName.trim() ? sanitizeText(senderName).slice(0, 50) : "Đồng nghiệp";
-    const sanitizedDept = senderDepartment ? sanitizeText(senderDepartment).slice(0, 50) : null;
+    // Sanitize optional fields (null nếu không nhập)
+    const sanitizedSender = senderName && senderName.trim() ? sanitizeText(senderName).slice(0, 50) : null;
+    const sanitizedDept = senderDepartment && senderDepartment.trim() ? sanitizeText(senderDepartment).slice(0, 50) : null;
     const sanitizedMessage = sanitizeText(message).slice(0, 500);
 
     // Validate imageUrl if present (Cloudinary secure_url or external image url)

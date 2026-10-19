@@ -251,7 +251,7 @@ export default function GreetingComposer({ onCardPublished }: GreetingComposerPr
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message,
-          senderName: senderName.trim() || "Đồng nghiệp",
+          senderName: senderName.trim() || null,
           senderDepartment: senderDepartment.trim() || null,
           cardTheme,
           imageUrl: customImageUrl || null,

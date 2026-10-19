@@ -1,18 +1,15 @@
 // Basic sensitive/inappropriate Vietnamese words filter
 const BANNED_PATTERNS = [
-  /đ[ụ|i|m|c|e|é|ệ|k|b|l]/i,
-  /v[l|k|c]/i,
-  /c[ặ|ù|a|ặ]c/i,
-  /l[ồ|o|z]ng/i,
-  /ch[ó|o] đ[ẻ|e]/i,
-  /đ[i|ĩ] đ[o|õ|õ]a/i,
-  /m[ẹ|e] m[à|a]y/i,
-  /th[ằ|a]ng kh[ố|o]n/i,
-  /con kh[ố|o]n/i,
-  /d[â|a]m d[ụ|u]c/i,
-  /t[ì|i]nh d[ụ|u]c/i,
-  /l[ừ|u]a đ[ả|a]o/i,
-  /c[ờ|o] b[ạ|a]c/i,
+  /\b(đm|đkm|đmm|dcm|đcm|vcl|vcll|vkl)\b/i,
+  /\b(đụ|địt|cặc|lồn|buồi)\b/i,
+  /\bchó đẻ\b/i,
+  /\bđĩ đõa\b/i,
+  /\bmẹ mày\b/i,
+  /\bthằng khốn\b/i,
+  /\bcon khốn\b/i,
+  /\bdâm dục\b/i,
+  /\blừa đảo\b/i,
+  /\bcờ bạc\b/i,
 ];
 
 export function checkContentAppropriate(text: string): { isAppropriate: boolean; reason?: string } {
