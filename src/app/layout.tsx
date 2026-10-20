@@ -16,7 +16,10 @@ const playfair = Playfair_Display({
   display: "swap",
 });
 
+const defaultAppUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:5173";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(defaultAppUrl),
   title: "Global Care — Gửi Nàng Một Điều Tử Tế | 20.10.2026",
   description:
     "Chào mừng Ngày Phụ nữ Việt Nam 20/10/2026 cùng Global Care. Gửi một lời thương, trao ngàn điều tử tế tới những người phụ nữ tuyệt vời đang làm nên điều khác biệt mỗi ngày.",
@@ -34,7 +37,7 @@ export const metadata: Metadata = {
     title: "Global Care — Gửi Nàng Một Điều Tử Tế | 20.10.2026",
     description:
       "20/10 — Gửi một lời thương, trao ngàn điều tử tế. Tạo và gửi thiệp chúc mừng đến các nữ cán bộ nhân viên Global Care.",
-    url: "https://globalcare.com.vn",
+    url: defaultAppUrl,
     siteName: "Global Care Women's Day 2026",
     locale: "vi_VN",
     type: "website",

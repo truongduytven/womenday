@@ -38,25 +38,35 @@ export default function CardDetailClient({ card }: CardDetailClientProps) {
   };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(window.location.href).then(() => {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     });
   };
 
   const handleShare = async () => {
+    const url = window.location.href;
+
+    // Luôn sao chép link trước để đảm bảo có sẵn link mở được trong bộ nhớ tạm
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      // Ignored
+    }
+
     if (navigator.share) {
       try {
         await navigator.share({
           title: "Thiệp chúc mừng 20/10 — Global Care",
-          text: `Một lời chúc 20/10 ấm áp gửi tặng phái đẹp Global Care!`,
-          url: window.location.href,
+          text: `Một lời chúc 20/10 ấm áp gửi tặng phái đẹp Global Care!\n${url}`,
+          url,
         });
       } catch {
         // User cancelled
       }
-    } else {
-      handleCopy();
     }
   };
 

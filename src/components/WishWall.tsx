@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
 import ReportModal from "./ReportModal";
 import {
   Sparkles,
@@ -250,6 +251,46 @@ export default function WishWall({ refreshTrigger = 0 }: WishWallProps) {
   // Active Image & Card Lightbox Preview Modal
   const [previewCard, setPreviewCard] = useState<WishCardData | null>(null);
 
+  // All published cards for Mobile Flashcard Infinite Loop (Gọi lên toàn bộ cho mobile)
+  const [allMobileCards, setAllMobileCards] = useState<WishCardData[]>([]);
+
+  // Mobile Flashcard Deck Active Index & Direction
+  const [activeMobileIndex, setActiveMobileIndex] = useState(0);
+  const [swipeDirection, setSwipeDirection] = useState<number>(1);
+
+  // Display list for mobile: ưu tiên danh sách gọi hết allMobileCards
+  const displayMobileCards = allMobileCards.length > 0 ? allMobileCards : cards;
+
+  // Lặp vô tận (Loop) khi chuyển thiệp trên mobile
+  const handleNextMobileCard = () => {
+    if (displayMobileCards.length === 0) return;
+    setSwipeDirection(1);
+    setActiveMobileIndex((prev) => (prev + 1) % displayMobileCards.length);
+  };
+
+  const handlePrevMobileCard = () => {
+    if (displayMobileCards.length === 0) return;
+    setSwipeDirection(-1);
+    setActiveMobileIndex((prev) => (prev - 1 + displayMobileCards.length) % displayMobileCards.length);
+  };
+
+  // Gọi tất cả lời chúc cho mobile flashcard loop
+  const fetchAllMobileCards = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/cards?all=true`);
+      const data = await res.json();
+      if (res.ok && data.cards) {
+        setAllMobileCards(data.cards);
+      }
+    } catch {
+      // Ignored
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAllMobileCards();
+  }, [fetchAllMobileCards, refreshTrigger]);
+
   const fetchCards = useCallback(async (targetPage = 1) => {
     setIsLoading(true);
     setError(null);
@@ -320,18 +361,26 @@ export default function WishWall({ refreshTrigger = 0 }: WishWallProps) {
   const handleNativeShare = async (publicId?: string) => {
     if (!publicId) return;
     const url = `${window.location.origin}/card/${publicId}`;
+
+    // Luôn sao chép link trước để đảm bảo có sẵn link mở được trong bộ nhớ tạm
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedId(publicId);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      // Ignored
+    }
+
     if (navigator.share) {
       try {
         await navigator.share({
           title: "Thiệp chúc 20/10 — Global Care",
-          text: "Gửi tặng các chị em Global Care thiệp chúc mừng 20/10!",
+          text: `Gửi tặng các chị em Global Care thiệp chúc mừng 20/10!\n${url}`,
           url,
         });
       } catch {
         // Ignored
       }
-    } else {
-      handleCopyCardLink(publicId);
     }
   };
 
@@ -468,10 +517,301 @@ export default function WishWall({ refreshTrigger = 0 }: WishWallProps) {
                 </a>
               </div>
             ) : (
-              /* ============================================================ */
-              /* ENLARGED STICKY NOTES WITH PIN POINTING INTO THE WHITE TAPE */
-              /* ============================================================ */
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7 sm:gap-8 pt-9 pb-4 sm:pt-10 sm:pb-6 items-stretch">
+              <>
+                {/* ============================================================ */}
+                {/* MOBILE VIEW: SWIPABLE INTERACTIVE FLASHCARD DECK (LOOP VÔ TẬN) */}
+                {/* ============================================================ */}
+                <div className="block md:hidden pt-1 pb-3">
+                  {/* Header with Card Counter & Swipe Hint */}
+                  <div className="flex items-center justify-between mb-3 px-1 text-xs">
+                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/95 border border-[#F8D7E0] shadow-xs">
+                      <span className="w-2 h-2 rounded-full bg-[#D9365E] animate-pulse" />
+                      <span className="font-bold text-[#30252B]">
+                        Thư {activeMobileIndex + 1}
+                      </span>
+                      <span className="text-[#8A7781]">/ {displayMobileCards.length}</span>
+                    </div>
+
+                    <div className="flex items-center gap-1 text-[#8A7781] text-[11px] font-medium">
+                      <span>Vuốt để xem tiếp</span>
+                      <span className="animate-bounce">👉</span>
+                    </div>
+                  </div>
+
+                  {/* Flashcard Deck Container */}
+                  <div className="relative w-full max-w-[340px] sm:max-w-[380px] mx-auto min-h-[460px] flex items-center justify-center">
+                    {/* Background Stack Illusion Cards (Tạo hiệu ứng tập flashcard dày dặn, sang trọng) */}
+                    {displayMobileCards.length > 2 && (
+                      <div
+                        className="absolute inset-x-5 top-5 bottom-0 rounded-3xl bg-white/50 border border-[#F8D7E0]/60 shadow-xs transform scale-[0.88] translate-y-4 pointer-events-none transition-all duration-300"
+                        aria-hidden="true"
+                      />
+                    )}
+                    {displayMobileCards.length > 1 && (
+                      <div
+                        className="absolute inset-x-2.5 top-2.5 bottom-0 rounded-3xl bg-white/75 border border-[#F8D7E0]/80 shadow-md transform scale-[0.94] translate-y-2 pointer-events-none transition-all duration-300"
+                        aria-hidden="true"
+                      />
+                    )}
+
+                    {/* Active Animated Flashcard */}
+                    <AnimatePresence initial={false} custom={swipeDirection} mode="wait">
+                      {(() => {
+                        const card = displayMobileCards[activeMobileIndex] || displayMobileCards[0];
+                        if (!card) return null;
+
+                        const style = NOTE_THEME_STYLES[card.cardTheme] || NOTE_THEME_STYLES.bloom;
+                        const formattedDate = card.createdAt
+                          ? new Date(card.createdAt).toLocaleDateString("vi-VN", {
+                              day: "2-digit",
+                              month: "2-digit",
+                            })
+                          : "20/10";
+
+                        const cleanSenderName = card.senderName?.trim() || "";
+                        const cleanDepartment = card.senderDepartment?.trim() || "";
+                        const isGenericName =
+                          !cleanSenderName || cleanSenderName.toLowerCase() === "đồng nghiệp";
+                        const hasCustomSender = !isGenericName || Boolean(cleanDepartment);
+                        const primarySignature = !isGenericName
+                          ? cleanSenderName
+                          : cleanSenderName || cleanDepartment;
+                        const secondarySignature =
+                          primarySignature !== cleanDepartment && cleanDepartment
+                            ? cleanDepartment
+                            : null;
+
+                        const hasCustomPhoto = Boolean(
+                          card.imageUrl && card.imageUrl.trim() !== ""
+                        );
+                        const themeFloral =
+                          DEFAULT_THEME_IMAGES[card.cardTheme] || DEFAULT_THEME_IMAGES.bloom;
+                        const displayImage = hasCustomPhoto
+                          ? card.imageUrl!.trim()
+                          : themeFloral.src;
+                        const imageAlt = hasCustomPhoto
+                          ? "Ảnh kỷ niệm đính kèm lời chúc"
+                          : themeFloral.alt;
+                        const imageBadgeLabel = hasCustomPhoto
+                          ? "Ảnh kỷ niệm"
+                          : themeFloral.label;
+
+                        return (
+                          <motion.div
+                            key={card.id || card.publicId}
+                            custom={swipeDirection}
+                            variants={{
+                              enter: (dir: number) => ({
+                                x: dir > 0 ? 220 : -220,
+                                opacity: 0,
+                                scale: 0.92,
+                                rotate: dir > 0 ? 4 : -4,
+                              }),
+                              center: {
+                                x: 0,
+                                opacity: 1,
+                                scale: 1,
+                                rotate: 0,
+                                transition: {
+                                  x: { type: "spring", stiffness: 320, damping: 28 },
+                                  opacity: { duration: 0.2 },
+                                  scale: { duration: 0.2 },
+                                },
+                              },
+                              exit: (dir: number) => ({
+                                x: dir > 0 ? -240 : 240,
+                                opacity: 0,
+                                scale: 0.9,
+                                rotate: dir > 0 ? -8 : 8,
+                                transition: {
+                                  x: { type: "spring", stiffness: 320, damping: 28 },
+                                  opacity: { duration: 0.18 },
+                                },
+                              }),
+                            }}
+                            initial="enter"
+                            animate="center"
+                            exit="exit"
+                            drag="x"
+                            dragDirectionLock
+                            dragConstraints={{ left: 0, right: 0 }}
+                            dragElastic={0.65}
+                            onDragEnd={(e, { offset, velocity }) => {
+                              const swipe = Math.abs(offset.x) * velocity.x;
+                              if (swipe < -6000 || offset.x < -50) {
+                                handleNextMobileCard();
+                              } else if (swipe > 6000 || offset.x > 50) {
+                                handlePrevMobileCard();
+                              }
+                            }}
+                            className="touch-pan-y relative w-full rounded-3xl cursor-pointer select-none"
+                            onClick={() => setPreviewCard(card)}
+                          >
+                            {/* Card Content styled as a rich, neat postcard/flashcard */}
+                            <div
+                              className={`relative rounded-3xl p-4.5 ${style.bg} border-2 ${style.border} shadow-[0_12px_32px_rgba(217,54,94,0.18)] flex flex-col justify-between overflow-hidden min-h-[370px]`}
+                            >
+                              {/* Top Washi Tape Strip */}
+                              <div
+                                className={`absolute -top-2 left-1/2 -translate-x-1/2 w-20 h-5 bg-white/95 backdrop-blur-xs border-y border-dashed ${style.tapeBorder} shadow-xs pointer-events-none rounded-xs flex items-center justify-center z-10`}
+                              >
+                                <div className="w-1.5 h-1.5 rounded-full bg-[#3D2E37]/35 shadow-inner" />
+                              </div>
+
+                              {/* Photo Area */}
+                              <div
+                                className="relative mt-2 mb-3 rounded-2xl overflow-hidden bg-white/90 p-1.5 shadow-sm border border-black/5 cursor-pointer"
+                                onClick={() => setPreviewCard(card)}
+                                title="Nhấn để xem ảnh phóng to"
+                              >
+                                <div className="relative w-full h-44 rounded-xl overflow-hidden bg-stone-100">
+                                  <Image
+                                    src={displayImage}
+                                    alt={imageAlt}
+                                    fill
+                                    sizes="(max-width: 640px) 340px, 400px"
+                                    className="object-cover"
+                                    priority
+                                  />
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
+
+                                  {/* Badge */}
+                                  <div className="absolute bottom-2 left-2 flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/95 backdrop-blur-md text-[#2E2429] text-[10px] font-semibold shadow-xs">
+                                    {hasCustomPhoto ? (
+                                      <>
+                                        <Camera className="w-3 h-3 text-[#D9365E]" />
+                                        <span>Ảnh kỷ niệm</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Flower2 className="w-3 h-3 text-[#D9365E]" />
+                                        <span>{imageBadgeLabel}</span>
+                                      </>
+                                    )}
+                                  </div>
+
+                                  {/* Tap to expand hint */}
+                                  <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-black/45 text-white backdrop-blur-sm text-[10px] flex items-center gap-1 font-medium">
+                                    <Maximize2 className="w-3 h-3" />
+                                    <span>Mở to</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Message Content */}
+                              <div
+                                className="py-2 px-1 flex-1 flex flex-col justify-between cursor-pointer"
+                                onClick={() => setPreviewCard(card)}
+                              >
+                                <div className="relative">
+                                  <Quote
+                                    className="w-5 h-5 absolute -top-2.5 -left-1 opacity-20 pointer-events-none"
+                                    style={{ color: style.accent }}
+                                  />
+                                  <p className="text-base text-[#2E2429] leading-relaxed italic font-serif pl-4 line-clamp-5 [text-wrap:pretty]">
+                                    &ldquo;{card.message}&rdquo;
+                                  </p>
+                                </div>
+
+                                {/* Sender signature & Date */}
+                                <div className="pt-3 mt-3 border-t border-[#30252B]/8 flex items-baseline justify-between text-xs">
+                                  {hasCustomSender ? (
+                                    <div>
+                                      <span className="font-bold text-sm text-[#2E2429]">
+                                        — {primarySignature}
+                                      </span>
+                                      {secondarySignature && (
+                                        <span className="text-[11px] text-[#7A6672] ml-1.5 font-medium">
+                                          ({secondarySignature})
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-[#8A7781] italic">
+                                      — Đồng nghiệp
+                                    </span>
+                                  )}
+                                  <span className="text-[11px] text-[#8A7781] font-mono shrink-0">
+                                    {formattedDate}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Pushpin rendered at top center */}
+                            <PushPin index={activeMobileIndex} />
+                          </motion.div>
+                        );
+                      })()}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Flashcard Navigation Controls: Prev / Next Buttons & Loop indicators (Không phân trang trên mobile) */}
+                  <div className="flex flex-col items-center gap-3 mt-4">
+                    <div className="flex items-center justify-between w-full max-w-[340px] px-2">
+                      <button
+                        type="button"
+                        onClick={handlePrevMobileCard}
+                        className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-white border border-[#F8D7E0] text-xs font-semibold text-[#4D3A44] shadow-xs active:scale-95 hover:bg-[#FFF0F4] hover:text-[#D9365E] transition-all"
+                        aria-label="Thư trước đó (loop)"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        <span>Thư trước</span>
+                      </button>
+
+                      {/* Dots if <= 8 cards, or sleek progress bar if > 8 cards */}
+                      {displayMobileCards.length <= 8 ? (
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 border border-[#F8D7E0] shadow-2xs">
+                          {displayMobileCards.map((_, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => {
+                                setSwipeDirection(i > activeMobileIndex ? 1 : -1);
+                                setActiveMobileIndex(i);
+                              }}
+                              aria-label={`Chuyển tới thư ${i + 1}`}
+                              className={`transition-all duration-200 rounded-full ${
+                                i === activeMobileIndex
+                                  ? "w-4 h-2 bg-gradient-to-r from-[#F45B8A] to-[#D9365E]"
+                                  : "w-2 h-2 bg-[#E8D1D8] hover:bg-[#D9365E]/50"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-1 px-3.5 py-1.5 rounded-full bg-white/90 border border-[#F8D7E0] shadow-2xs">
+                          <div className="w-20 h-1.5 bg-[#F8D7E0] rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-[#F45B8A] to-[#D9365E] rounded-full transition-all duration-300"
+                              style={{
+                                width: `${((activeMobileIndex + 1) / displayMobileCards.length) * 100}%`,
+                              }}
+                            />
+                          </div>
+                          <span className="text-[10px] text-[#8A7781] font-mono leading-none">
+                            {activeMobileIndex + 1} / {displayMobileCards.length}
+                          </span>
+                        </div>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={handleNextMobileCard}
+                        className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-gradient-to-r from-[#D9365E] to-[#F45B8A] text-white text-xs font-semibold shadow-xs active:scale-95 transition-all"
+                        aria-label="Thư tiếp theo (loop)"
+                      >
+                        <span>Thư sau</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ============================================================ */}
+                {/* DESKTOP VIEW: ENLARGED STICKY NOTES WITH PIN ON BULLETIN BOARD */}
+                {/* ============================================================ */}
+                <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-7 sm:gap-8 pt-9 pb-4 sm:pt-10 sm:pb-6 items-stretch">
                 {cards.map((card, idx) => {
                   const style =
                     NOTE_THEME_STYLES[card.cardTheme] || NOTE_THEME_STYLES.bloom;
@@ -618,6 +958,7 @@ export default function WishWall({ refreshTrigger = 0 }: WishWallProps) {
                   );
               })}
               </div>
+              </>
             )}
           </div>
         </div>
@@ -626,7 +967,7 @@ export default function WishWall({ refreshTrigger = 0 }: WishWallProps) {
         {/* DOTS PAGINATION (DOT BÊN DƯỚI ĐỂ DI CHUYỂN GIỮA PHÂN TRANG) */}
         {/* ============================================================ */}
         {totalPages > 1 && (
-          <div className="flex flex-col items-center justify-center pt-8 gap-3">
+          <div className="hidden md:flex flex-col items-center justify-center pt-8 gap-3">
             <div className="flex items-center gap-3">
               {/* Prev Button */}
               <button
@@ -689,6 +1030,7 @@ export default function WishWall({ refreshTrigger = 0 }: WishWallProps) {
           onClose={() => setReportingPublicId(null)}
           onReportSubmitted={() => {
             fetchCards(page);
+            fetchAllMobileCards();
           }}
         />
       )}

@@ -1,5 +1,6 @@
 import React from "react";
 import { Metadata } from "next";
+import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Image from "next/image";
@@ -29,13 +30,21 @@ export async function generateMetadata({ params }: CardPageProps): Promise<Metad
   const snippet =
     card.message.length > 80 ? `${card.message.slice(0, 80)}...` : card.message;
 
+  // Lấy URL thực tế từ domain đang truy cập (hoặc NEXT_PUBLIC_APP_URL) để link chia sẻ mở được chính xác
+  const headersList = await headers();
+  const host = headersList.get("x-forwarded-host") || headersList.get("host");
+  const proto = headersList.get("x-forwarded-proto") || "http";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (host ? `${proto}://${host}` : "");
+  const cardUrl = baseUrl ? `${baseUrl.replace(/\/$/, "")}/card/${id}` : `/card/${id}`;
+
   return {
+    metadataBase: baseUrl ? new URL(baseUrl) : new URL("http://localhost:5173"),
     title: `Thiệp chúc 20/10 ${sender} — Global Care`,
     description: snippet,
     openGraph: {
       title: `Thiệp chúc mừng 20/10 gửi phái đẹp Global Care`,
       description: snippet,
-      url: `https://globalcare.com.vn/card/${id}`,
+      url: cardUrl,
       siteName: "Global Care Women's Day 2026",
       type: "website",
     },

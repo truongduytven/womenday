@@ -311,27 +311,38 @@ export default function GreetingComposer({ onCardPublished }: GreetingComposerPr
 
   // Copy share link
   const handleCopyLink = () => {
-    if (!shareUrl) return;
-    navigator.clipboard.writeText(shareUrl).then(() => {
+    const targetUrl = shareUrl || (publishedCard ? `${window.location.origin}/card/${publishedCard.publicId}` : "");
+    if (!targetUrl) return;
+    navigator.clipboard.writeText(targetUrl).then(() => {
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2500);
     });
   };
 
-  // Native share
+  // Native share - sử dụng chính xác link của sao chép link
   const handleNativeShare = async () => {
-    if (navigator.share && shareUrl) {
+    const targetUrl = shareUrl || (publishedCard ? `${window.location.origin}/card/${publishedCard.publicId}` : "");
+    if (!targetUrl) return;
+
+    // Luôn sao chép link vào clipboard để đảm bảo người dùng có sẵn link mở được
+    try {
+      await navigator.clipboard.writeText(targetUrl);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2500);
+    } catch {
+      // Ignored
+    }
+
+    if (navigator.share) {
       try {
         await navigator.share({
           title: "Thiệp chúc 20/10 — Global Care",
-          text: "Gửi tặng các chị em Global Care thiệp chúc mừng Ngày Phụ Nữ Việt Nam!",
-          url: shareUrl,
+          text: `Gửi tặng các chị em Global Care thiệp chúc mừng Ngày Phụ Nữ Việt Nam!\n${targetUrl}`,
+          url: targetUrl,
         });
       } catch {
         // User cancelled share
       }
-    } else {
-      handleCopyLink();
     }
   };
 

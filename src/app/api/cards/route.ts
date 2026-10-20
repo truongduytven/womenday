@@ -9,8 +9,9 @@ const ALLOWED_THEMES = ["bloom", "joy", "minimal", "celebration"];
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
+    const isAll = searchParams.get("all") === "true";
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
-    const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "12", 10)));
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "12", 10)));
     const theme = searchParams.get("theme");
 
     const whereClause: {
@@ -29,8 +30,7 @@ export async function GET(req: NextRequest) {
       prisma.greetingCard.findMany({
         where: whereClause,
         orderBy: { createdAt: "desc" },
-        skip: (page - 1) * limit,
-        take: limit,
+        ...(isAll ? {} : { skip: (page - 1) * limit, take: limit }),
         select: {
           id: true,
           publicId: true,
@@ -47,11 +47,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       cards,
       pagination: {
-        page,
-        limit,
+        page: isAll ? 1 : page,
+        limit: isAll ? total : limit,
         total,
-        totalPages: Math.ceil(total / limit),
-        hasMore: page * limit < total,
+        totalPages: isAll ? 1 : Math.ceil(total / limit),
+        hasMore: isAll ? false : page * limit < total,
       },
     });
   } catch (error: unknown) {
